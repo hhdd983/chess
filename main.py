@@ -1,119 +1,112 @@
-import chess
-import chess.engine
 import pygame
+import chess
 
+
+# Setting
 pygame.init()
-width, height = 480, 480
-square_size = width // 8
-white = (238, 238, 210)
-black = (118, 150, 86)
+width, height = 560, 560 #560 *560
+square_size = width // 8 #square_size 70
+white = (238, 238, 210) #white color
+black = (118, 150, 86)  #black color
+text_color = (200, 0, 0)
+
+font = pygame.font.SysFont(None, 48)
+
 screen = pygame.display.set_mode((width, height))
 pygame.display.set_caption('Chess Game (Joon & Boaz)')
+clock = pygame.time.Clock()
+# Loading images: 'bp.png','bn.png',bb.'png','br.png','bq.png','bk.png','wp.png','wn.png',wb.'png','wr.png','wq.png','wk.png'
+# White pieces (P,N,B.R.Q.K) black pieces (p,n,b,r,q,k)
+piece_images = {}
+for symbol in ['wp','wn','wb','wr','wq','wk','bp','bn','bb','br','bq','bk']:
+    img = pygame.image.load(f'{symbol}.png') 
+    parser = lambda s: chr(ord(s[1])-32) if s[0]=='w' else s[1] # If the first letter start with 'w', change it to capital letter else small letter
+    piece_images[parser(symbol)] = pygame.transform.scale(img, (square_size, square_size))
+# lamba is the one that we can use without making any values
 
-# White pieces
-wk = pygame.transform.scale(pygame.image.load(
-    'wk.png'), (square_size, square_size))
-wq = pygame.transform.scale(pygame.image.load(
-    'wq.png'), (square_size, square_size))
-wn1 = pygame.transform.scale(pygame.image.load(
-    'wn.png'), (square_size, square_size))
-wn2 = pygame.transform.scale(pygame.image.load(
-    'wn.png'), (square_size, square_size))
-wb1 = pygame.transform.scale(pygame.image.load(
-    'wb.png'), (square_size, square_size))
-wb2 = pygame.transform.scale(pygame.image.load(
-    'wb.png'), (square_size, square_size))
-wr1 = pygame.transform.scale(pygame.image.load(
-    'wr.png'), (square_size, square_size))
-wr2 = pygame.transform.scale(pygame.image.load(
-    'wr.png'), (square_size, square_size))
-wp1 = pygame.transform.scale(pygame.image.load(
-    'wp.png'), (square_size, square_size))
-wp2 = pygame.transform.scale(pygame.image.load(
-    'wp.png'), (square_size, square_size))
-wp3 = pygame.transform.scale(pygame.image.load(
-    'wp.png'), (square_size, square_size))
-wp4 = pygame.transform.scale(pygame.image.load(
-    'wp.png'), (square_size, square_size))
-wp5 = pygame.transform.scale(pygame.image.load(
-    'wp.png'), (square_size, square_size))
-wp6 = pygame.transform.scale(pygame.image.load(
-    'wp.png'), (square_size, square_size))
-wp7 = pygame.transform.scale(pygame.image.load(
-    'wp.png'), (square_size, square_size))
-wp8 = pygame.transform.scale(pygame.image.load(
-    'wp.png'), (square_size, square_size))
+# python-chess Create board
+board = chess.Board()
 
-# Black pieces
-bk = pygame.transform.scale(pygame.image.load('bk.png'), (square_size, square_size))
-bq = pygame.transform.scale(pygame.image.load(
-    'bq.png'), (square_size, square_size))
-bn1 = pygame.transform.scale(pygame.image.load(
-    'bn.png'), (square_size, square_size))
-bn2 = pygame.transform.scale(pygame.image.load(
-    'bn.png'), (square_size, square_size))
-br1 = pygame.transform.scale(pygame.image.load(
-    'br.png'), (square_size, square_size))
-br2 = pygame.transform.scale(pygame.image.load(
-    'br.png'), (square_size, square_size))
-bb1 = pygame.transform.scale(pygame.image.load(
-    'bb.png'), (square_size, square_size))
-bb2 = pygame.transform.scale(pygame.image.load(
-    'bb.png'), (square_size, square_size))
-bp1 = pygame.transform.scale(pygame.image.load(
-    'bp.png'), (square_size, square_size))
-bp2 = pygame.transform.scale(pygame.image.load(
-    'bp.png'), (square_size, square_size))
-bp3 = pygame.transform.scale(pygame.image.load(
-    'bp.png'), (square_size, square_size))
-bp4 = pygame.transform.scale(pygame.image.load(
-    'bp.png'), (square_size, square_size))
-bp5 = pygame.transform.scale(pygame.image.load(
-    'bp.png'), (square_size, square_size))
-bp6 = pygame.transform.scale(pygame.image.load(
-    'bp.png'), (square_size, square_size))
-bp7 = pygame.transform.scale(pygame.image.load(
-    'bp.png'), (square_size, square_size))
-bp8 = pygame.transform.scale(pygame.image.load(
-    'bp.png'), (square_size, square_size))
-board = [[br1, bn1, bb1, bq, bk, bb2, bn2, br2],
-         [bp1, bp2, bp3, bp4, bp5, bp6, bp7, bp8],
-         [None, None, None, None, None, None, None, None],
-         [None, None, None, None, None, None, None, None],
-         [None, None, None, None, None, None, None, None],
-         [None, None, None, None, None, None, None, None],
-         [wp1, wp2, wp3, wp4, wp5, wp6, wp7, wp8],
-         [wr1, wn1, wb1, wq, wk, wb2, wn2, wr2]]
+# UCI = now/to move (e2e4)
+files = 'abcdefgh'
+def coord_to_uci(col, row):
 
-run = True
-selected_square = None
-while run:
+    return files[col] + str(8 - row) # col = vertical line, row = horizontal line 
+# (8 - row) to reverse the board
+
+
+# main route
+selected_sq = None  # Select nothing
+running = True
+
+while running:
+    clock.tick(60)
+
+    # Using event
     for event in pygame.event.get():
         if event.type == pygame.QUIT:
-            run = False
+            running = False
+
+        # Mouse click -> starting point
         elif event.type == pygame.MOUSEBUTTONDOWN and event.button == 1:
-            from_i,from_j = event.pos[0]//square_size, event.pos[1]//square_size
-            if board[from_j][from_i] is not None:
-                selected_square = (from_j,from_i)
-        elif event.type == pygame.MOUSEBUTTONUP:
-            if selected_square:
-                to_i, to_j = event.pos[0]//square_size, event.pos[1]//square_size
-                board[to_j][to_i] = board[from_j][from_i]
-                board[from_j][from_i] = None
+            col, row = event.pos[0] // square_size, event.pos[1] // square_size
+            uci_sq = coord_to_uci(col, row)
+            idx = chess.square(col, 7 - row)
+            piece = board.piece_at(idx)
+            if piece and piece.color == board.turn: # Can only click when it's your turn
+                selected_sq = uci_sq
+
+        # Mouse unclick -> ending point / if not possible it doesn't move
+        elif event.type == pygame.MOUSEBUTTONUP and selected_sq:
+            col, row = event.pos[0] // square_size, event.pos[1] // square_size
+            dest_sq = coord_to_uci(col, row)
+            move = None
+            # 1) If staring point and ending point are same -> no movement
+            if dest_sq != selected_sq:
+                try:
+                    move = chess.Move.from_uci(selected_sq + dest_sq)
+                except ValueError:
+                    # If it's a wrong point -> no movement
+                    move = None
+
+            # 2) If it's a right point -> play
+            if move and move in board.legal_moves:
+                board.push(move)
 
 
-    for i in range(8):  # i is row
-        for j in range(8):  # j is column=
-            color = white if (i + j) % 2 == 0 else black
-            x = i * square_size
-            y = j * square_size
-            pygame.draw.rect(screen, color, (x, y, square_size, square_size))
-            piece = board[j][i]
-            if piece != None:
-                screen.blit(piece, (x, y))
+    # Print chess board
+    for r in range(8):
+        for c in range(8):
+            color = white if (r + c) % 2 == 0 else black # If it's even number white else black ((r + c) % 2 == 0)
+            rect = (c * square_size, r * square_size, square_size, square_size)
+            pygame.draw.rect(screen, color, rect)
 
-    # White pieces
+    # Pieces
+    for sq_idx, piece in board.piece_map().items():
+        file = chess.square_file(sq_idx)
+        rank = chess.square_rank(sq_idx)
+        col = file
+        row = 7 - rank
+        img = piece_images[piece.symbol()]
+        screen.blit(img, (col * square_size, row * square_size))
 
+    # Print "White wins!"or"Black wins!"or"Draw!"
+    if board.is_game_over():
+        result = board.result()  # '1-0', '0-1', '1/2-1/2'
+        if result == '1-0':
+            msg = "White wins!"
+        elif result == '0-1':
+            msg = "Black wins!"
+        else:
+            msg = "Draw!"
+
+        text_surf = font.render(msg, True, text_color)
+        text_rect = text_surf.get_rect(center=(width // 2, height // 2))
+        # 반투명 배경 박스
+        overlay = pygame.Surface((text_rect.width + 20, text_rect.height + 20), pygame.SRCALPHA)
+        overlay.fill((255, 255, 255, 180))
+        screen.blit(overlay, (text_rect.x - 10, text_rect.y - 10))
+        screen.blit(text_surf, text_rect)
     pygame.display.flip()
 
 pygame.quit()
