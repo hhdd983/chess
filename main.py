@@ -1,7 +1,6 @@
 import pygame
 import chess
 
-
 # Setting
 pygame.init()
 width, height = 560, 560 #560 *560
@@ -12,15 +11,21 @@ text_color = (200, 0, 0)
 
 font = pygame.font.SysFont(None, 48)
 
-screen = pygame.display.set_mode((width, height))
+screen = pygame.display.set_mode((width+280, height))
 pygame.display.set_caption('Chess Game (Joon & Boaz)')
 clock = pygame.time.Clock()
 # Loading images: 'bp.png','bn.png',bb.'png','br.png','bq.png','bk.png','wp.png','wn.png',wb.'png','wr.png','wq.png','wk.png'
 # White pieces (P,N,B.R.Q.K) black pieces (p,n,b,r,q,k)
 piece_images = {}
+
+def parser(s): # If the first letter start with 'w', change it to capital letter else small letter
+    if s[0] == 'w':
+        return chr(ord(s[1])-32)
+    else:
+        return s[1]
+
 for symbol in ['wp','wn','wb','wr','wq','wk','bp','bn','bb','br','bq','bk']:
     img = pygame.image.load(f'{symbol}.png') 
-    parser = lambda s: chr(ord(s[1])-32) if s[0]=='w' else s[1] # If the first letter start with 'w', change it to capital letter else small letter
     piece_images[parser(symbol)] = pygame.transform.scale(img, (square_size, square_size))
 # lamba is the one that we can use without making any values
 
@@ -80,6 +85,8 @@ while running:
             color = white if (r + c) % 2 == 0 else black # If it's even number white else black ((r + c) % 2 == 0)
             rect = (c * square_size, r * square_size, square_size, square_size)
             pygame.draw.rect(screen, color, rect)
+    rect = (560,0,280,560)
+    pygame.draw.rect(screen, black, rect)
 
     # Pieces
     for sq_idx, piece in board.piece_map().items():
