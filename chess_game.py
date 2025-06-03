@@ -3,6 +3,7 @@ import chess
 import numpy as np
 import tensorflow as tf
 
+
 def board_to_vector(board):
     board_vector = np.zeros(64 * 12, dtype=np.float32)
     piece_map = {
@@ -16,6 +17,7 @@ def board_to_vector(board):
             board_vector[i * 12 + piece_idx] = 1
     return board_vector
 
+
 def predict_best_move(board, model):
     if model is None:
         print("AI model not loaded, cannot predict move.")
@@ -23,7 +25,7 @@ def predict_best_move(board, model):
 
     board_vec = board_to_vector(board)
     input_vec = np.expand_dims(board_vec, axis=0)
-    
+
     predictions = model.predict(input_vec, verbose=0)[0]
 
     best_move = None
@@ -37,7 +39,7 @@ def predict_best_move(board, model):
         from_square = move.from_square
         to_square = move.to_square
         move_idx = from_square * 64 + to_square
-        
+
         if move_idx < len(predictions):
             prob = predictions[move_idx]
             if prob > max_prob:
@@ -45,12 +47,13 @@ def predict_best_move(board, model):
                 best_move = move
         else:
             pass
-    
+
     if best_move is None and legal_moves_list:
         print("AI could not find a confident best move, picking first legal move.")
         return legal_moves_list[0]
 
     return best_move
+
 
 # Setting
 pygame.init()
@@ -68,15 +71,17 @@ clock = pygame.time.Clock()
 
 piece_images = {}
 
+
 def parser(s):
     if s[0] == 'w':
         return chr(ord(s[1])-32)
     else:
         return s[1]
 
+
 for symbol in ['wp', 'wn', 'wb', 'wr', 'wq', 'wk', 'bp', 'bn', 'bb', 'br', 'bq', 'bk']:
     try:
-        img = pygame.image.load(f'{symbol}.png')
+        img = pygame.image.load(f'images/{symbol}.png')
         piece_images[parser(symbol)] = pygame.transform.scale(
             img, (square_size, square_size))
     except pygame.error as e:
@@ -89,8 +94,10 @@ for symbol in ['wp', 'wn', 'wb', 'wr', 'wq', 'wk', 'bp', 'bn', 'bb', 'br', 'bq',
 board = chess.Board()
 files = 'abcdefgh'
 
+
 def coord_to_uci(col, row):
     return files[col] + str(8 - row)
+
 
 if __name__ == "__main__":
     chess_ai_model = None
@@ -132,7 +139,7 @@ if __name__ == "__main__":
                 if move and move in board.legal_moves:
                     board.push(move)
                     selected_sq = None
-                    
+
                     if not board.is_game_over() and board.turn == chess.BLACK:
                         print("AI thinking...")
                         ai_move = predict_best_move(board, chess_ai_model)
@@ -146,12 +153,12 @@ if __name__ == "__main__":
                     elif chess_ai_model is None:
                         print("AI model not loaded. Skipping AI turn.")
 
-
         # Print chess board
         for r in range(8):
             for c in range(8):
                 color = white if (r + c) % 2 == 0 else black
-                rect = (c * square_size, r * square_size, square_size, square_size)
+                rect = (c * square_size, r * square_size,
+                        square_size, square_size)
                 pygame.draw.rect(screen, color, rect)
         rect = (560, 0, 280, 560)
         pygame.draw.rect(screen, black, rect)
@@ -175,7 +182,8 @@ if __name__ == "__main__":
                 msg = "Draw!"
 
             text_surf = font.render(msg, True, text_color)
-            text_rect = text_surf.get_rect(center=(width + 280 // 2, height // 2))
+            text_rect = text_surf.get_rect(
+                center=(width + 280 // 2, height // 2))
             overlay = pygame.Surface(
                 (text_rect.width + 20, text_rect.height + 20), pygame.SRCALPHA)
             overlay.fill((255, 255, 255, 180))
