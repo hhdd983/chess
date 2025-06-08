@@ -26,8 +26,9 @@ def predict_best_move(board: chess.Board, model) -> chess.Move | None:
         print("AI model not loaded, cannot predict move.")
         return None
 
-    board_vec = board_to_vector(board)[None, :]  # add batch dim
-    preds = model.predict(board_vec, verbose=0)[0]
+    board_vec = board_to_vector(board).reshape((8, 8, 12))
+    board_input = np.expand_dims(board_vec, axis=0)
+    preds = model.predict(board_input, verbose=0)[0]
 
     best_move, best_prob = None, -1.0
     for mv in board.legal_moves:
@@ -62,8 +63,16 @@ def make_button_surface(ai_white: bool) -> pygame.Surface:
     return font.render(label, True, (0, 0, 0), TEXT)
 
 
-button_rect = pygame.Rect(600, 200, 200, 80)
-button_surf = make_button_surface(False)  # AI starts as Black
+button_surf = make_button_surface(False)
+text_rect = button_surf.get_rect()
+padding = 10
+
+center_x, center_y = 700, 240
+button_width = text_rect.width + padding * 2
+button_height = text_rect.height + padding * 2
+button_x = center_x - button_width // 2
+button_y = center_y - button_height // 2
+
 
 # ---------- load images ----------
 
@@ -95,7 +104,7 @@ def coord_to_uci(col: int, row: int) -> str:
 # ---------- load / warn about model ----------
 model = None
 try:
-    model = tf.keras.models.load_model('chess_ai_model.h5')
+    model = tf.keras.models.load_model('chess_ai_model.keras')
     print("Chess AI model loaded.")
 except Exception as e:
     print(f"[WARN] Couldn’t load model: {e}\nRun model_trainer.py first.")
@@ -168,7 +177,11 @@ while running:
 
     #  right-hand panel
     pygame.draw.rect(screen, DARK, (WIDTH, 0, 280, HEIGHT))
-    screen.blit(button_surf, button_rect.move(5, 5))
+    button_rect = pygame.Rect(button_x, button_y, button_width, button_height)
+
+    # Draw button
+    pygame.draw.rect(screen, TEXT, button_rect, border_radius=8)
+    screen.blit(button_surf, (button_x + padding, button_y + padding))
 
     #  pieces
     for sq, piece in board.piece_map().items():

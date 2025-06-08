@@ -1,40 +1,86 @@
+# ---------- importing neccesary libraries ----------
 import numpy as np
 import tensorflow as tf
-from tensorflow.keras import layers, models, optimizers
+from keras import layers, models
 
+
+# ---------- Creating A simple
 def create_chess_nn_model():
-    model = models.Sequential([
-        layers.Input(shape=(64 * 12,)),
-        layers.Dense(1024, activation='relu'),
-        layers.Dropout(0.3),
+    model = models.Sequential([  # Creating CNN model
+        layers.Input(shape=(8, 8, 12)),
+
+        layers.Conv2D(64, (3, 3), padding='same', activation='relu'),
+        layers.BatchNormalization(),
+
+        layers.Conv2D(64, (3, 3), padding='same', activation='relu'),
+        layers.BatchNormalization(),
+
+        layers.Conv2D(128, (3, 3), padding='same', activation='relu'),
+        layers.BatchNormalization(),
+
+        layers.Flatten(),
         layers.Dense(512, activation='relu'),
-        layers.Dropout(0.3),
-        layers.Dense(64 * 64, activation='softmax')
+        layers.Dropout(0.3),   # Fully connected layer
+        # output layer (one hot encoding)
+        layers.Dense(4096, activation='softmax')
     ])
 
     model.compile(optimizer='adam',
-                  loss='categorical_crossentropy',
+                  loss=tf.keras.losses.CategoricalCrossentropy(
+                      label_smoothing=0.1),
                   metrics=['accuracy'])
     return model
 
-def train_and_save_model(X_train, y_train, model_path='chess_ai_model.h5'):
-    print("Training model...")
-    model = create_chess_nn_model()
+
+def train_and_save_model(X_train, y_train, model_path='chess_ai_model.keras'):
+    try:
+        model = tf.keras.models.load_model(model_path)
+        print("Loaded existing model.")
+        model.compile(optimizer='adam',
+                      loss=tf.keras.losses.CategoricalCrossentropy(
+                          label_smoothing=0.1),
+                      metrics=['accuracy'])
+    except:
+        print("No existing model found. Creating new one.")
+        model = create_chess_nn_model()
+
     model.summary()
 
-    history = model.fit(X_train, y_train, epochs=10, batch_size=32, validation_split=0.2)
-    model.save(model_path)
-    print(f"Model trained and saved as {model_path}")
+    # Checkpoint setup
+    from keras.callbacks import ModelCheckpoint
+    checkpoint = ModelCheckpoint(
+        "chess_ai_model.keras",
+        monitor="val_accuracy",
+        save_best_only=True,
+        save_weights_only=False,
+        verbose=1
+    )
+
+    model.fit(
+        X_train,
+        y_train,
+        epochs=500,
+        batch_size=32,
+        validation_split=0.2,
+        callbacks=[checkpoint]
+    )
+
+    print("Training done.")
     return model
 
-if __name__ == "__main__":
+
+if __name__ == "__main__":  # only run it if this is directly ran
     print("Loading training data...")
     try:
         X_data = np.load('X_train_lichess_api.npy')
         y_data = np.load('y_train_lichess_api.npy')
-        print(f"Data loaded. X_data shape: {X_data.shape}, y_data shape: {y_data.shape}")
-        
-        # 모델 학습 및 저장
+
+        # reshaping x data from (N, 768) to (N, 8, 8, 12)
+        X_data = X_data.reshape(-1, 8, 8, 12)
+        print(
+            f"Data loaded. X_data shape: {X_data.shape}, y_data shape: {y_data.shape}")
+
+        # saving the trained information
         train_and_save_model(X_data, y_data)
 
     except FileNotFoundError:
