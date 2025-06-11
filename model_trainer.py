@@ -1,34 +1,39 @@
-# ---------- importing neccesary libraries ----------
 import numpy as np
 import tensorflow as tf
-from keras import layers, models
+from keras import layers, models, regularizers
+from keras.callbacks import ModelCheckpoint, ReduceLROnPlateau, EarlyStopping
 
 
-# ---------- Creating A simple
 def create_chess_nn_model():
-    model = models.Sequential([  # Creating CNN model
+    model = models.Sequential([
         layers.Input(shape=(8, 8, 12)),
 
-        layers.Conv2D(64, (3, 3), padding='same', activation='relu'),
+        layers.Conv2D(32, (3, 3), padding='same', activation='relu',
+                      kernel_regularizer=regularizers.l2(1e-4)),
         layers.BatchNormalization(),
 
-        layers.Conv2D(64, (3, 3), padding='same', activation='relu'),
+        layers.Conv2D(32, (3, 3), padding='same', activation='relu',
+                      kernel_regularizer=regularizers.l2(1e-4)),
         layers.BatchNormalization(),
 
-        layers.Conv2D(128, (3, 3), padding='same', activation='relu'),
+        layers.Conv2D(128, (3, 3), padding='same', activation='relu',
+                      kernel_regularizer=regularizers.l2(1e-4)),
         layers.BatchNormalization(),
 
         layers.Flatten(),
-        layers.Dense(512, activation='relu'),
-        layers.Dropout(0.3),   # Fully connected layer
-        # output layer (one hot encoding)
+
+        layers.Dense(256, activation='relu',
+                     kernel_regularizer=regularizers.l2(1e-4)),
+        layers.Dropout(0.5),
+
         layers.Dense(4096, activation='softmax')
     ])
 
-    model.compile(optimizer='adam',
-                  loss=tf.keras.losses.CategoricalCrossentropy(
-                      label_smoothing=0.1),
-                  metrics=['accuracy'])
+    model.compile(
+        optimizer='adam',
+        loss=tf.keras.losses.CategoricalCrossentropy(label_smoothing=0.1),
+        metrics=['accuracy']
+    )
     return model
 
 
@@ -36,55 +41,64 @@ def train_and_save_model(X_train, y_train, model_path='chess_ai_model.keras'):
     try:
         model = tf.keras.models.load_model(model_path)
         print("Loaded existing model.")
-        model.compile(optimizer='adam',
-                      loss=tf.keras.losses.CategoricalCrossentropy(
-                          label_smoothing=0.1),
-                      metrics=['accuracy'])
     except:
         print("No existing model found. Creating new one.")
         model = create_chess_nn_model()
 
     model.summary()
 
-    # Checkpoint setup
-    from keras.callbacks import ModelCheckpoint
+    # Callbacks
     checkpoint = ModelCheckpoint(
-        "chess_ai_model.keras",
+        model_path,
         monitor="val_accuracy",
         save_best_only=True,
-        save_weights_only=False,
+        verbose=1
+    )
+
+    lr_schedule = ReduceLROnPlateau(
+        monitor="val_accuracy",
+        factor=0.5,
+        patience=3,
+        verbose=1
+    )
+
+    early_stop = EarlyStopping(
+        monitor="val_accuracy",
+        patience=7,
+        restore_best_weights=True,
         verbose=1
     )
 
     model.fit(
         X_train,
         y_train,
-        epochs=500,
-        batch_size=32,
-        validation_split=0.2,
-        callbacks=[checkpoint]
+        epochs = 50,
+        batch_size = 64,
+        validation_split = 0.2,
+        shuffle = True,
+        callbacks=[checkpoint, lr_schedule, early_stop]
     )
 
     print("Training done.")
     return model
 
 
-if __name__ == "__main__":  # only run it if this is directly ran
+if __name__ == "__main__":
     print("Loading training data...")
     try:
-        X_data = np.load('X_train_lichess_api.npy')
-        y_data = np.load('y_train_lichess_api.npy')
+        X_data = np.load('training_data/X_players.npy')
+        y_data = np.load('training_data/y_players.npy')
 
-        # reshaping x data from (N, 768) to (N, 8, 8, 12)
+        X_data = X_data[:100000]
+        y_data = y_data[:100000]
+
         X_data = X_data.reshape(-1, 8, 8, 12)
         print(
             f"Data loaded. X_data shape: {X_data.shape}, y_data shape: {y_data.shape}")
 
-        # saving the trained information
         train_and_save_model(X_data, y_data)
 
     except FileNotFoundError:
-        print("Error: Training data (X_train_lichess_api.npy, y_train_lichess_api.npy) not found.")
-        print("Please run data_collector.py first to generate and save the data.")
+        print("Error: Training data not found.")
     except Exception as e:
-        print(f"An error occurred during model training: {e}")
+        print(f"An error occurred: {e}")
